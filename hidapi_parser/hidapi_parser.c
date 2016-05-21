@@ -1320,7 +1320,7 @@ static void fill_element_from_button_caps(PHIDP_BUTTON_CAPS pCaps, struct hid_de
     element->isrelative = pCaps->IsAbsolute ? 0 : 1;
     element->isvariable = ((bitField & HID_ITEM_CONSTANT) == 0);
     element->report_id = pCaps->ReportID;
-    element->report_size = pCaps->Range.UsageMax - pCaps->Range.UsageMin + 1; // TODO: not sure about this one. The API does not seem to provide this. Perhaps set to usage_max - usage_min + 1 (1 bit per usage)?
+    element->report_size = pCaps->Range.UsageMax - pCaps->Range.UsageMin + 1; 
     element->report_index = 1; // TODO: not sure about this one. The API does not seem to provide this. Perhaps set to 1?
 
 }
@@ -1387,12 +1387,16 @@ static int hid_parse_caps(struct hid_device_element **pplast_element, struct hid
                     new_element = duplicate_element_with_new_usage(plast_element, j, pdevice_collection, index);
                     plast_element->next = new_element;
                     plast_element = new_element;
+#ifdef DEBUG_PARSER
                     debug_element(new_element);
+#endif
                 }
             }
             else{
                 new_element->usage = pCaps->NotRange.Usage;
+#ifdef DEBUG_PARSER
                 debug_element(new_element);                
+#endif
             }
         }
         free(pButtonCaps);
@@ -1433,12 +1437,16 @@ static int hid_parse_caps(struct hid_device_element **pplast_element, struct hid
                     new_element = duplicate_element_with_new_usage(plast_element, j, pdevice_collection, index);
                     plast_element->next = new_element;
                     plast_element = new_element;
+#ifdef DEBUG_PARSER
                     debug_element(new_element);
+#endif
                 }
             }
             else{
                 new_element->usage = pCaps->NotRange.Usage;
-                debug_element(new_element);                
+#ifdef DEBUG_PARSER
+                debug_element(new_element);
+#endif
             }
         }
         free(pValueCaps);
@@ -1468,8 +1476,7 @@ int hid_parse_input_elements_values( unsigned char* buf, int size, struct hid_de
         report_id = buf[0];
     }
 
-    // TODO: perhaps on Windows we do not need to calculate the report size here, and we can just get it from the size parameter that we got from above
-    // Look for the size of the report (in bits), and convert to bytes (rounding up)
+    // I thtink on Windows we do not need to calculate the report size here, and we can just get it from the size parameter that we got from above
     for (int i = 0; i < devdesc->number_of_reports; i++){
         if (devdesc->report_ids[i] == report_id){
             report_length = size;
@@ -1483,11 +1490,9 @@ int hid_parse_input_elements_values( unsigned char* buf, int size, struct hid_de
     if (cur_element->io_type != HID_REPORT_TYPE_INPUT){
         cur_element = hid_get_next_input_element(cur_element);
     }
-    //printf("cur_element %p\n", cur_element );
 
     // The Windows API has a function to get the data of all the buttons that are on, and another to get the value data by component page and usage
     // We get all the buttons that are on
-    // TODO: perhaps we could put the preparsed data in the devdesc structure (only for Windows)
     HANDLE dev_handle = get_device_handle(devdesc->device);
     PHIDP_PREPARSED_DATA pp_data;
     if (!HidD_GetPreparsedData(dev_handle, &pp_data)){
@@ -1515,10 +1520,10 @@ int hid_parse_input_elements_values( unsigned char* buf, int size, struct hid_de
             unsigned long new_value;
             res = HidP_GetUsageValue(HidP_Input, cur_element->usage_page, 0, cur_element->usage, &new_value, pp_data, buf, report_length);
             if (res == HIDP_STATUS_SUCCESS){
-            	// printf("element page %i, usage %i, index %i, value %i, rawvalue %i, newvalueref %i\n", cur_element->usage_page, cur_element->usage, cur_element->index, cur_element->value, cur_element->rawvalue, newValueRef );
                 if (new_value != cur_element->rawvalue || cur_element->repeat){
-                    //printf("element page %i, usage %i, index %i, value %i, rawvalue %i, newvalue %i\n", cur_element->usage_page, cur_element->usage, cur_element->index, cur_element->value, cur_element->rawvalue, new_value);
-                    fflush(stdout);
+#ifdef DEBUG_PARSER
+                    printf("element page %i, usage %i, index %i, value %i, rawvalue %i, newvalue %i\n", cur_element->usage_page, cur_element->usage, cur_element->index, cur_element->value, cur_element->rawvalue, new_value);
+#endif
                     hid_element_set_value_from_input(cur_element, new_value);
                     devdesc->_element_callback(cur_element, devdesc->_element_data);
                 }
@@ -1535,6 +1540,9 @@ int hid_parse_input_elements_values( unsigned char* buf, int size, struct hid_de
                 }
                 if (new_value != cur_element->rawvalue || cur_element->repeat){
                     hid_element_set_value_from_input(cur_element, new_value);
+#ifdef DEBUG_PARSER
+                    printf("element page %i, usage %i, index %i, value %i, rawvalue %i, newvalue %i\n", cur_element->usage_page, cur_element->usage, cur_element->index, cur_element->value, cur_element->rawvalue, new_value);
+#endif
                     devdesc->_element_callback(cur_element, devdesc->_element_data);
                 }
             }            
@@ -1659,6 +1667,8 @@ void hid_parse_element_info( struct hid_dev_desc * devdesc ){
 
     /* Reports */
     // Perhaps look at this (from MSDN):  The XxxReportByteLength members of a HID collection's HIDP_CAPS structure specify the required size of input, output, and feature reports
+    // On Windows it is not clear that knowing the report size is important at this point, since we get it implicitly on the read size. It's quite likely that the calculation done here 
+    // is not right, but it does not affect (should revisit later)
     struct hid_device_element *element = device_collection->first_element;
     while (element != NULL){
         int report_id = element->report_id;
