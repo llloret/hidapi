@@ -1351,6 +1351,7 @@ static void fill_element_from_value_caps(PHIDP_VALUE_CAPS pCaps, struct hid_devi
 static int hid_parse_caps(struct hid_device_element **pplast_element, struct hid_device_collection **ppcollections, struct hid_device_collection *pdevice_collection, 
     const PHIDP_PREPARSED_DATA pp_data, const PHIDP_CAPS caps, int report_type, BOOL is_button, int *index)
 {
+    int i, j;
     USHORT numCaps;
     enum _HIDP_REPORT_TYPE api_report_type;
     struct hid_device_element *plast_element = *pplast_element;
@@ -1367,7 +1368,7 @@ static int hid_parse_caps(struct hid_device_element **pplast_element, struct hid
             free(pButtonCaps);
             return -1;
         }
-        for (int i = 0; i < numCaps; i++){
+        for (i = 0; i < numCaps; i++){
         	// Create a new element
             struct hid_device_element *new_element = hid_new_element();
             if (plast_element){
@@ -1386,7 +1387,7 @@ static int hid_parse_caps(struct hid_device_element **pplast_element, struct hid
                 // If it is a range, we copy the element, and update the usage. We want to have an element per usage.
                 new_element->usage = pCaps->Range.UsageMin;          
                 debug_element(new_element);
-                for (int j = pCaps->Range.UsageMin + 1; j <= pCaps->Range.UsageMax; j++){
+                for (j = pCaps->Range.UsageMin + 1; j <= pCaps->Range.UsageMax; j++){
                     new_element = duplicate_element_with_new_usage(plast_element, j, pdevice_collection, index);
                     plast_element->next = new_element;
                     plast_element = new_element;
@@ -1416,7 +1417,7 @@ static int hid_parse_caps(struct hid_device_element **pplast_element, struct hid
             free(pValueCaps);
             return -1;
         }
-        for (int i = 0; i < numCaps; i++){
+        for (i = 0; i < numCaps; i++){
         	// Create a new element
             struct hid_device_element *new_element = hid_new_element();
             if (plast_element){
@@ -1436,7 +1437,7 @@ static int hid_parse_caps(struct hid_device_element **pplast_element, struct hid
                 // If it is a range, we copy the element, and update the usage. We want to have an element per usage.
                 new_element->usage = pCaps->Range.UsageMin;                
                 debug_element(new_element);
-                for (int j = pCaps->Range.UsageMin + 1; j <= pCaps->Range.UsageMax; j++){
+                for (j = pCaps->Range.UsageMin + 1; j <= pCaps->Range.UsageMax; j++){
                     new_element = duplicate_element_with_new_usage(plast_element, j, pdevice_collection, index);
                     plast_element->next = new_element;
                     plast_element = new_element;
@@ -1466,9 +1467,8 @@ int hid_send_element_output( struct hid_dev_desc * devdesc, struct hid_device_el
     return 0;
 }
 int hid_parse_input_elements_values( unsigned char* buf, int size, struct hid_dev_desc * devdesc ){
-    // TO see how to handle HID Reports
-    //See https ://msdn.microsoft.com/en-us/library/windows/hardware/ff538783(v=vs.85).aspx
     // If there is only one report, there will be no report ID in the report. Otherwise, it is the first byte
+    int i;
     int report_id = 0;
     int report_length = 0;
     struct hid_device_collection * device_collection = devdesc->device_collection;
@@ -1480,7 +1480,7 @@ int hid_parse_input_elements_values( unsigned char* buf, int size, struct hid_de
     }
 
     // I thtink on Windows we do not need to calculate the report size here, and we can just get it from the size parameter that we got from above
-    for (int i = 0; i < devdesc->number_of_reports; i++){
+    for (i = 0; i < devdesc->number_of_reports; i++){
         if (devdesc->report_ids[i] == report_id){
             report_length = size;
         }
@@ -1534,7 +1534,7 @@ int hid_parse_input_elements_values( unsigned char* buf, int size, struct hid_de
             else if (res == HIDP_STATUS_USAGE_NOT_FOUND){                
                 // Then see if we can find the element's page and usage in the buttons that are set to on, if not, it is implicitly 0
                 new_value = 0;
-                for (int i = 0; i < usage_and_page_length; i++){
+                for (i = 0; i < usage_and_page_length; i++){
                     USAGE usage = usage_and_page_list[i].Usage;
                     if (usage_and_page_list[i].UsagePage = cur_element->usage_page && usage == cur_element->usage){
                         new_value = 1;
@@ -1558,6 +1558,7 @@ int hid_parse_input_elements_values( unsigned char* buf, int size, struct hid_de
 }
 void hid_parse_element_info( struct hid_dev_desc * devdesc ){
 
+    int i, j;
     hid_device * dev = devdesc->device;
     
     struct hid_device_collection * device_collection = hid_new_collection();
@@ -1625,12 +1626,12 @@ void hid_parse_element_info( struct hid_dev_desc * devdesc ){
     }            
             
     // Create the N collections, and put them in an array, so that we can efficiently construct the pointers to each other using the Windows API                
-    for (int i = 0; i < numColls; i++){
+    for (i = 0; i < numColls; i++){
         collections[i] = hid_new_collection();
     }
 
     // And now fill the data and create the collection links
-    for (int i = 0; i < numColls; i++){
+    for (i = 0; i < numColls; i++){
         PHIDP_LINK_COLLECTION_NODE p_collection = &linkCollectionNodes[i];
         // Documentation says that if parent is 0, then there is no parent, but then how do you indicate that the parent is at index 0???
         // I think that is wrong, and 0 indicates that the parent is the collection at index 
@@ -1679,7 +1680,7 @@ void hid_parse_element_info( struct hid_dev_desc * devdesc ){
         int report_count = element->report_index; // TODO: report_count is not used????
 
         int reportexists = 0;
-        for (int j = 0; j < numreports; j++){
+        for (j = 0; j < numreports; j++){
             reportexists = (report_ids[j] == report_id);
         }
         if (!reportexists){
@@ -1702,7 +1703,7 @@ void hid_parse_element_info( struct hid_dev_desc * devdesc ){
     devdesc->number_of_reports = numreports;
     devdesc->report_lengths = (int*)malloc(sizeof(int) * numreports);
     devdesc->report_ids = (int*)malloc(sizeof(int) * numreports);
-    for (int j = 0; j<numreports; j++){
+    for (j = 0; j<numreports; j++){
         devdesc->report_lengths[j] = report_lengths[j];
         devdesc->report_ids[j] = report_ids[j];
     }
