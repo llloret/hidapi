@@ -1317,6 +1317,8 @@ static void fill_element_from_button_caps(PHIDP_BUTTON_CAPS pCaps, struct hid_de
     USHORT bitField = pCaps->BitField;
     element->usage_page = pCaps->UsagePage;
     element->type = bitField & 0xf;
+    element->logical_min = 0;
+    element->logical_max = 1;
     element->isarray = ((bitField & HID_ITEM_VARIABLE) == 0);
     element->isrelative = pCaps->IsAbsolute ? 0 : 1;
     element->isvariable = ((bitField & HID_ITEM_CONSTANT) == 0);
