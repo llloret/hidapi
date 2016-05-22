@@ -1385,8 +1385,10 @@ static int hid_parse_caps(struct hid_device_element **pplast_element, struct hid
             fill_element_from_button_caps(pCaps, new_element);
             if (pCaps->IsRange){
                 // If it is a range, we copy the element, and update the usage. We want to have an element per usage.
-                new_element->usage = pCaps->Range.UsageMin;          
+                new_element->usage = pCaps->Range.UsageMin;
+#ifdef DEBUG_PARSER
                 debug_element(new_element);
+#endif
                 for (j = pCaps->Range.UsageMin + 1; j <= pCaps->Range.UsageMax; j++){
                     new_element = duplicate_element_with_new_usage(plast_element, j, pdevice_collection, index);
                     plast_element->next = new_element;
@@ -1654,9 +1656,13 @@ void hid_parse_element_info( struct hid_dev_desc * devdesc ){
         collections[i]->usage_page = p_collection->LinkUsagePage;
         collections[i]->usage_index = p_collection->LinkUsage;
         collections[i]->index = new_index++; // TODO not sure about this one
+#ifdef DEBUG_PARSER
         debug_collection(collections[i], i);
-    }            
+#endif
+    }
+#ifdef DEBUG_PARSER
     debug_collection(device_collection, 100);
+#endif
 
     /* Now, create the elements, parsing the (input, output, feature) x (button, values) capabilities */
     int index_element = 0;
